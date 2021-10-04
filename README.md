@@ -1,4 +1,4 @@
-# mlcv_project
+# MLCV Project
 
 
 Some interesting papers
