@@ -1,9 +1,6 @@
 import torch
-from torch import nn, optim
-from torch.nn import functional as F
+from torch import nn
 from torch.autograd import Variable
-from torch.utils.data import Dataset
-import argparse
 import numpy as np
 
 class CNN_Encoder(nn.Module):
@@ -116,89 +113,3 @@ class Network(nn.Module):
         z = self.encode(x.view(-1, 784))
         return self.decode(z)
 
-
-class NPYDataset(Dataset):
-    def __init__(self, data_path):
-        super().__init__()
-        self.data = np.load(data_path)
-
-    def __len__(self):
-        return len(self.data)
-
-    def __getitem__(self, index):
-        return self.data[index].reshape((28,28))
-
-parser = argparse.ArgumentParser(
-        description='Main function to call training for different AutoEncoders')
-parser.add_argument('--batch-size', type=int, default=2, metavar='N',
-                    help='input batch size for training (default: 128)')
-parser.add_argument('--epochs', type=int, default=10, metavar='N',
-                    help='number of epochs to train (default: 10)')
-parser.add_argument('--no-cuda', action='store_true', default=False,
-                    help='enables CUDA training')
-parser.add_argument('--seed', type=int, default=42, metavar='S',
-                    help='random seed (default: 1)')
-parser.add_argument('--log-interval', type=int, default=10, metavar='N',
-                    help='how many batches to wait before logging training status')
-parser.add_argument('--embedding-size', type=int, default=32, metavar='N',
-                    help='how many batches to wait before logging training status')
-parser.add_argument('--results_path', type=str, default='results/', metavar='N',
-                    help='Where to store images')
-parser.add_argument('--model', type=str, default='AE', metavar='N',
-                    help='Which architecture to use')
-parser.add_argument('--dataset', type=str, default='MNIST', metavar='N',
-                    help='Which dataset to use')
-parser.add_argument('-j', '--workers', default=0, type=int, metavar='N',
-                    help='number of data loading workers (default: 0)')
-
-args = parser.parse_args()
-args.cuda = not args.no_cuda and torch.cuda.is_available()
-device = torch.device("cuda" if args.cuda else "cpu")
-torch.manual_seed(args.seed)
-
-
-model = Network(args)
-
-model.train()
-opt = optim.Adam(model.parameters(), lr=1e-3)
-loss_fn = nn.L1Loss(reduction='sum')
-
-train_dataset = NPYDataset("dataset/full-numpy_bitmap-apple.npy")
-
-train_loader = torch.utils.data.DataLoader(
-    train_dataset,
-    batch_size=args.batch_size,
-    shuffle=False,
-    num_workers=args.workers,
-    pin_memory=True,
-    sampler=None,
-    drop_last=True)
-
-train_loss = 0
-
-for epoch in range(args.epochs):
-    for batch_idx, data in enumerate(train_loader):
-        data = data.to(device).float()
-        opt.zero_grad()
-        output = model(data) * 255
-        loss = loss_fn(output, data)
-        print(loss.item())
-        loss.backward()
-        train_loss += loss.item()
-        opt.step()
-
-
-from PIL import Image as im
-
-model.eval()
-for batch_idx, data in enumerate(train_loader):
-    data = data.to(device).float()
-    opt.zero_grad()
-    output = model(data) * 255
-    img = output[0].detach().numpy()
-    print(data[0], output[0])
-    print(img.shape)
-    i = im.fromarray(img)
-    i = i.convert("L")
-    i.save('gfg_dummy_pic.png')
-    break
