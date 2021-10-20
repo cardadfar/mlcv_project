@@ -41,8 +41,8 @@ model = Network(args)
 opt = optim.Adam(model.parameters(), lr=1e-3)
 loss_fn = nn.L1Loss(reduction='sum')
 
-train_dataset = NPYDataset("dataset/full-numpy_bitmap-apple.npy", train=True)
-test_dataset = NPYDataset("dataset/full-numpy_bitmap-apple.npy", train=False)
+train_dataset = NPYDataset("data/full-numpy_bitmap-apple.npy", train=True)
+test_dataset = NPYDataset("data/full-numpy_bitmap-apple.npy", train=False)
 
 train_loader = torch.utils.data.DataLoader(
     train_dataset,
