@@ -1,7 +1,6 @@
 # MLCV Project
 
 
-Some interesting papers
+## Setup
 
-* [Deep Learning for Freehand Sketches](https://arxiv.org/pdf/2001.02600.pdf)
-* [Video -ViSA](https://www.cs.cmu.edu/~aayushb/Video-ViSA/)
+Download the .npy filess from the [QuickDraw](https://github.com/googlecreativelab/quickdraw-dataset) dataset and place them in a dataset dir. Run train.py
