@@ -53,6 +53,15 @@ train_loader = torch.utils.data.DataLoader(
     sampler=None,
     drop_last=True)
 
+test_loader = torch.utils.data.DataLoader(
+    test_dataset,
+    batch_size=args.batch_size,
+    shuffle=False,
+    num_workers=args.workers,
+    pin_memory=True,
+    sampler=None,
+    drop_last=True)
+
 train_loss = 0
 
 def train(model, data_loader, loss_fn, opt):
@@ -76,4 +85,4 @@ def test(model, data_loader, loss_fn):
         print(loss.item())
 
 train(model, train_loader, loss_fn, opt)
-test(model, train_loader, loss_fn)
+test(model, test_loader, loss_fn)
