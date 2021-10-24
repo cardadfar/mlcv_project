@@ -17,7 +17,9 @@ parser.add_argument('--no-cuda', action='store_true', default=False,
                     help='enables CUDA training')
 parser.add_argument('--seed', type=int, default=42, metavar='S',
                     help='random seed (default: 1)')
-parser.add_argument('--print-freq', type=int, default=10, metavar='N',
+parser.add_argument('--print-freq', type=int, default=100, metavar='N',
+                    help='how many batches to wait before logging training status')
+parser.add_argument('--save-freq', type=int, default=5, metavar='N',
                     help='how many batches to wait before logging training status')
 parser.add_argument('--embedding-size', type=int, default=32, metavar='N',
                     help='how many batches to wait before logging training status')
@@ -38,12 +40,13 @@ torch.manual_seed(args.seed)
 print(args)
 
 model = Network(args)
+model.to(device) 
 
 opt = optim.Adam(model.parameters(), lr=1e-3)
 loss_fn = nn.L1Loss(reduction='sum')
 
-train_dataset = NPYDataset("data/full-numpy_bitmap-apple.npy", train=True)
-test_dataset = NPYDataset("data/full-numpy_bitmap-apple.npy", train=False)
+train_dataset = NPYDataset("data/", train=True)
+test_dataset = NPYDataset("data/", train=False)
 
 train_loader = torch.utils.data.DataLoader(
     train_dataset,
@@ -111,18 +114,38 @@ def train(model, data_loader, loss_fn, opt, epoch):
 
         epoch += 1
 
-    save_model(model, loss_fn, opt, epoch)
+        if epoch % args.save_freq == 0:
+            save_model(model, loss_fn, opt, epoch)
 
 def test(model, data_loader, loss_fn):
     model.eval()
+    avg_loss = 0 
+    avg_loss_cnt = 0
     for batch_idx, data in enumerate(data_loader):
         data = data.to(device).float()
         output = model(data) * 255
         loss = loss_fn(output, data)
-        print(loss.item())
+        avg_loss += loss.item()
+        avg_loss_cnt += 1
 
-model, loss_fn, opt, epoch = load_model(model, loss_fn, opt, 4)
-#test(model, train_loader, loss_fn)
+        '''
+        TODO: simple way to print images. Maybe I can make this look nicer...
+        if batch_idx == 0:
+            true_data = (data[0]).detach().cpu().numpy()
+            true = im.fromarray(np.uint8(true_data))
+            true.save('true.png')
+            pred_data = (output[0] * 255).detach().cpu().numpy()
+            pred = im.fromarray(np.uint8(pred_data))
+            pred.save('pred.png')
+        '''
+
+    print('Epoch (Test): [{0}]\t'
+        'Loss {1:.2f}\t'.format(
+                        epoch,
+                        avg_loss / avg_loss_cnt))
+
+epoch = 0
+model, loss_fn, opt, epoch = load_model(model, loss_fn, opt, 5)
+#test(model, test_loader, loss_fn)
 train(model, train_loader, loss_fn, opt, epoch)
-
 
