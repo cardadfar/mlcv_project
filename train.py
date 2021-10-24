@@ -17,7 +17,7 @@ parser.add_argument('--no-cuda', action='store_true', default=False,
                     help='enables CUDA training')
 parser.add_argument('--seed', type=int, default=42, metavar='S',
                     help='random seed (default: 1)')
-parser.add_argument('--log-interval', type=int, default=10, metavar='N',
+parser.add_argument('--print-freq', type=int, default=10, metavar='N',
                     help='how many batches to wait before logging training status')
 parser.add_argument('--embedding-size', type=int, default=32, metavar='N',
                     help='how many batches to wait before logging training status')
@@ -35,6 +35,7 @@ args.cuda = not args.no_cuda and torch.cuda.is_available()
 device = torch.device("cuda" if args.cuda else "cpu")
 torch.manual_seed(args.seed)
 
+print(args)
 
 model = Network(args)
 
@@ -64,17 +65,53 @@ test_loader = torch.utils.data.DataLoader(
 
 train_loss = 0
 
-def train(model, data_loader, loss_fn, opt):
+def save_model(model, loss_fn, opt, epoch):
+    torch.save({
+        'epoch': epoch,
+        'model_state_dict': model.state_dict(),
+        'optimizer_state_dict': opt.state_dict(),
+        'loss': loss_fn
+        }, "checkpoints/model_epoch_" + str(epoch))
+    
+    print("Model saved at epoch {0}.".format(epoch))
+
+def load_model(model, loss_fn, opt, epoch):
+    checkpoint = torch.load("checkpoints/model_epoch_" + str(epoch))
+    model.load_state_dict(checkpoint['model_state_dict'])
+    opt.load_state_dict(checkpoint['optimizer_state_dict'])
+    epoch = checkpoint['epoch']
+    loss_fn = checkpoint['loss']
+
+    print("Model loaded at epoch {0}.".format(epoch))
+
+    return model, loss_fn, opt, epoch
+
+def train(model, data_loader, loss_fn, opt, epoch):
     model.train()
-    for epoch in range(args.epochs):
+    while epoch < args.epochs:
+        avg_loss = 0
+        avg_loss_cnt = 0
         for batch_idx, data in enumerate(data_loader):
             data = data.to(device).float()
             opt.zero_grad()
             output = model(data) * 255
             loss = loss_fn(output, data)
-            print(loss.item())
+            avg_loss += loss.item()
+            avg_loss_cnt += 1
+            if batch_idx % args.print_freq == 0:
+                print('Epoch: [{0}][{1}/{2}]\t'
+                  'Loss {3:.2f} ({4:.2f})\t'.format(
+                      epoch,
+                      batch_idx,
+                      len(train_loader),
+                      loss.item(),
+                      avg_loss / avg_loss_cnt))
             loss.backward()
             opt.step()
+
+        epoch += 1
+
+    save_model(model, loss_fn, opt, epoch)
 
 def test(model, data_loader, loss_fn):
     model.eval()
@@ -84,5 +121,8 @@ def test(model, data_loader, loss_fn):
         loss = loss_fn(output, data)
         print(loss.item())
 
-train(model, train_loader, loss_fn, opt)
-test(model, test_loader, loss_fn)
+model, loss_fn, opt, epoch = load_model(model, loss_fn, opt, 4)
+#test(model, train_loader, loss_fn)
+train(model, train_loader, loss_fn, opt, epoch)
+
+
