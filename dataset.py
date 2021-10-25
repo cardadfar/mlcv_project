@@ -3,13 +3,17 @@ import numpy as np
 import os
 
 class NPYDataset(Dataset):
-    def __init__(self, data_path, train=True):
+    def __init__(self, data_path, train=True, classList=None):
         super().__init__()
         
         first = True
         nFiles = len(os.listdir(data_path))
         data_list = []
         for idx, filename in enumerate(os.listdir(data_path)):
+
+            dataset = filename[:-4]  # remove .npy
+            if classList != None and dataset not in classList:
+                continue 
 
             if train:
                 print('Loading Train Data: [{0}/{1}] \t {2}'.format(idx, 

@@ -1,0 +1,8 @@
+
+- add wandb visualizations (train loss, test loss)
+- add class IDs to dataloader
+- add classifier (discriminator) to training cycle
+    - need to create a pretraied classifier?
+- add web visualizer of latent space
+    - have an additional autoencoder to get top 3 dims? 
+    - or maybe we can use PCA?
