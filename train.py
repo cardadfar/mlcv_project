@@ -143,6 +143,30 @@ def save_img(data, name, test=True):
     else:
         true.save('plots/train/' + name)
 
+def linear(x, ib=1):
+    '''
+    linearly interpolate between frames
+    x : encoded tensor (n, encode_dim)
+    ib : inbetween frame num
+    '''
+
+    n, encode_dim = x.shape
+
+
+    y = torch.Tensor((n-1)*(ib+1)+1, encode_dim)
+    idx = 0
+    for i in range(n-1):
+        y[idx] = x[i]
+        idx += 1
+        for t in range(1,ib+1):
+            wgt = t / (ib + 2.0)
+            ibtwn = (1.0 - wgt) * x[i] + wgt * x[i+1]
+            y[idx] = ibtwn
+            idx += 1
+    
+    y[idx] = x[n-1]
+    return y
+
 
 def test(model, data_loader, loss_fn):
     model.eval()
@@ -160,8 +184,9 @@ def test(model, data_loader, loss_fn):
         if batch_idx == 0:
             encoded = model.encode(data[0:5].view(-1, 784))
 
+            '''
             save_img(data[0], '0.0.png')
-
+            
             for j in range(4):
                 for i in range(0,7):
                     wgt = sigmoid(i / 7.0, 5)
@@ -173,6 +198,17 @@ def test(model, data_loader, loss_fn):
                     save_img(pred_data, str(j) + '.' + str(i) + '.png')
             
                 save_img(data[j+1], str(j+1) + '.0.png')
+            '''
+
+            y = linear(encoded)
+            y = y.to(device)
+            output = model.decode(y)
+            output = F.sigmoid(8*(output-0.5)) * 255
+
+            for i in range(len(output)):
+                save_img(output[i], str(i) + '.png')
+
+
             
     print('Epoch (Test): [{0}]\t'
         'Loss {1:.2f}\t'.format(
