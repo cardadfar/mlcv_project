@@ -6,3 +6,5 @@
 - add web visualizer of latent space
     - have an additional autoencoder to get top 3 dims? 
     - or maybe we can use PCA?
+- fix bspline in interp.py
+- fix img to vid in utils.py
