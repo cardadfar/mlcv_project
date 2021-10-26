@@ -47,8 +47,8 @@ opt = optim.Adam(model.parameters(), lr=1e-4)
 #loss_fn = nn.MSELoss(reduction='sum')
 loss_fn = nn.BCELoss()
 
-#classList = ['apple']
-classList = None
+classList = ['apple']
+#classList = None
 train_dataset = NPYDataset("data/", train=True, classList=classList)
 test_dataset = NPYDataset("data/", train=False, classList=classList)
 
@@ -131,6 +131,19 @@ def train(model, data_loader, loss_fn, opt, epoch):
         pred = im.fromarray(np.uint8(pred_data))
         pred.save('plots/train/pred_epoch_' + str(epoch) + '.png')
 
+
+def sigmoid(x, scale=10.0):
+    return 1.0 / (1.0 + np.exp(scale * (-x + 0.5)))
+
+def save_img(data, name, test=True):
+    true_data = data.detach().cpu().numpy()
+    true = im.fromarray(np.uint8(true_data))
+    if test:
+        true.save('plots/test/' + name)
+    else:
+        true.save('plots/train/' + name)
+
+
 def test(model, data_loader, loss_fn):
     model.eval()
     avg_loss = 0 
@@ -139,30 +152,35 @@ def test(model, data_loader, loss_fn):
         data = data.to(device).float()
         output = model(data)
 
-        data = data / 255.0
-        loss = loss_fn(output, data)
+        loss = loss_fn(output, data / 255.0)
         avg_loss += loss.item()
         avg_loss_cnt += 1
 
         #TODO: simple way to print images. Maybe I can make this look nicer...
         if batch_idx == 0:
-            true_data = (data[0] * 255).detach().cpu().numpy()
-            true = im.fromarray(np.uint8(true_data))
-            true.save('plots/test/rue.png')
-            pred_data = output[0] # TODO: maybe we can squash the inputs to 0 or 1 more.
-            pred_data = (pred_data * 255).detach().cpu().numpy()
-            pred = im.fromarray(np.uint8(pred_data))
-            pred.save('plots/test/pred_epoch_' + str(epoch) + '.png')
-            return 
+            encoded = model.encode(data[0:5].view(-1, 784))
 
+            save_img(data[0], '0.0.png')
+
+            for j in range(4):
+                for i in range(0,7):
+                    wgt = sigmoid(i / 7.0, 5)
+                    encoded_blend = (1.0 - wgt) * encoded[j] + wgt * encoded[j+1]
+
+                    output = model.decode(encoded_blend.view(1, 32))
+
+                    pred_data = F.sigmoid(8*(output[0]-0.5)) * 255
+                    save_img(pred_data, str(j) + '.' + str(i) + '.png')
+            
+                save_img(data[j+1], str(j+1) + '.0.png')
+            
     print('Epoch (Test): [{0}]\t'
         'Loss {1:.2f}\t'.format(
                         epoch,
                         avg_loss / avg_loss_cnt))
 
 epoch = 0
-for i in range(5,6,5):
-    model, loss_fn, opt, epoch = load_model(model, loss_fn, opt, i)
-    test(model, train_loader, loss_fn)
+model, loss_fn, opt, epoch = load_model(model, loss_fn, opt, 5)
+test(model, test_loader, loss_fn)
 #train(model, train_loader, loss_fn, opt, epoch)
 
