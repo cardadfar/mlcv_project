@@ -4,6 +4,7 @@ import torch.nn.functional as F
 import argparse
 import numpy as np
 from PIL import Image as im
+import os
 
 from dataset import NPYDataset
 from model import Network
@@ -29,6 +30,8 @@ parser.add_argument('--embedding-size', type=int, default=32, metavar='N',
                     help='how many batches to wait before logging training status')
 parser.add_argument('--results_path', type=str, default='results/', metavar='N',
                     help='Where to store images')
+parser.add_argument('--checkpoint_path', type=str, default='checkpoints/', metavar='N',
+                    help='Where to store models')
 parser.add_argument('--model', type=str, default='AE', metavar='N',
                     help='Which architecture to use')
 parser.add_argument('--dataset', type=str, default='MNIST', metavar='N',
@@ -43,22 +46,26 @@ torch.manual_seed(args.seed)
 
 print(args)
 
+os.makedirs(args.checkpoint_path, exist_ok=True)
+os.makedirs(args.results_path + 'train/', exist_ok=True)
+os.makedirs(args.results_path + 'test/', exist_ok=True)
+
 model = Network(args)
 model.to(device) 
 
-opt = optim.Adam(model.parameters(), lr=1e-4)
+opt = optim.Adam(model.parameters(), lr=1e-4, weight_decay=1e-2)
 #loss_fn = nn.MSELoss(reduction='sum')
 loss_fn = nn.BCELoss()
 
-classList = ['apple']
-#classList = None
+classList = ['full_numpy_bitmap_hat']
+# classList = None
 train_dataset = NPYDataset("data/", train=True, classList=classList)
 test_dataset = NPYDataset("data/", train=False, classList=classList)
 
 train_loader = torch.utils.data.DataLoader(
     train_dataset,
     batch_size=args.batch_size,
-    shuffle=False,
+    shuffle=True,
     num_workers=args.workers,
     pin_memory=True,
     sampler=None,
@@ -81,12 +88,12 @@ def save_model(model, loss_fn, opt, epoch):
         'model_state_dict': model.state_dict(),
         'optimizer_state_dict': opt.state_dict(),
         'loss': loss_fn
-        }, "checkpoints/model_epoch_" + str(epoch))
+        }, args.checkpoint_path + "model_epoch_" + str(epoch))
     
     print("Model saved at epoch {0}.".format(epoch))
 
 def load_model(model, loss_fn, opt, epoch):
-    checkpoint = torch.load("checkpoints/model_epoch_" + str(epoch), map_location=device)
+    checkpoint = torch.load(args.checkpoint_path + "model_epoch_" + str(epoch), map_location=device)
     model.load_state_dict(checkpoint['model_state_dict'])
     opt.load_state_dict(checkpoint['optimizer_state_dict'])
     epoch = checkpoint['epoch']
@@ -106,7 +113,6 @@ def train(model, data_loader, loss_fn, opt, epoch):
             opt.zero_grad()
             output = model(data) #* 255
             
-
             data = data / 255.0
             loss = loss_fn(output, data)
             avg_loss += loss.item()
@@ -129,20 +135,20 @@ def train(model, data_loader, loss_fn, opt, epoch):
 
         true_data = (data[0] * 255).detach().cpu().numpy()
         true = im.fromarray(np.uint8(true_data))
-        true.save('plots/train/true.png')
+        true.save(args.results_path + 'train/true.png')
         pred_data = (output[0] * 255).detach().cpu().numpy()
         pred = im.fromarray(np.uint8(pred_data))
-        pred.save('plots/train/pred_epoch_' + str(epoch) + '.png')
+        pred.save(args.results_path + 'train/pred_epoch_' + str(epoch) + '.png')
 
 def save_img(data, name, test=True):
     true_data = data.detach().cpu().numpy()
     true = im.fromarray(np.uint8(true_data))
     if test:
-        true.save('plots/test/' + name)
+        true.save(args.results_path + 'test/' + name)
     else:
-        true.save('plots/train/' + name)
+        true.save(args.results_path + 'train/' + name)
 
-def test(model, data_loader, loss_fn):
+def test(model, data_loader, loss_fn, epoch=0):
     model.eval()
     avg_loss = 0 
     avg_loss_cnt = 0
@@ -155,10 +161,11 @@ def test(model, data_loader, loss_fn):
         avg_loss_cnt += 1
 
         if batch_idx == 0:
-            encoded = model.encode(data[0:10].view(-1, 784))
+            idx = np.random.choice(len(data), 10, replace=False)
+            encoded = model.encode(data[idx].view(-1, 784))
 
             #y = linear(encoded, ibf=5, ease=sigmoid)
-            y = catmullRom(encoded, ibf=5, ease=iden)
+            y = catmullRom(encoded, ibf=20, ease=iden)
             #y = bspline(encoded, ibf=5, ease=iden)
             y = y.to(device)
             output = model.decode(y)
@@ -168,16 +175,14 @@ def test(model, data_loader, loss_fn):
                 save_img(output[i], str(i) + '.png')
             
             return
-
-
             
     print('Epoch (Test): [{0}]\t'
         'Loss {1:.2f}\t'.format(
                         epoch,
                         avg_loss / avg_loss_cnt))
 
-epoch = 0
-model, loss_fn, opt, epoch = load_model(model, loss_fn, opt, 5)
-test(model, test_loader, loss_fn)
-#train(model, train_loader, loss_fn, opt, epoch)
+# model, loss_fn, opt, epoch = load_model(model, loss_fn, opt, 5)
+# test(model, test_loader, loss_fn)
+train(model, train_loader, loss_fn, opt, 0)
+test(model, test_loader, loss_fn, 0)
 

@@ -1,22 +1,20 @@
-
-#TODO: none of this works. would be nice to have...
-
 import cv2
 import numpy as np
-import glob
+import os
 
-frameSize = (28, 28)
 
-out = cv2.VideoWriter('output.avi',cv2.VideoWriter_fourcc(*'XVID'), 1, frameSize)
+def img2vid(img_dir, frame_size=(28, 28), output_path='video.avi'):
+    video = cv2.VideoWriter(output_path, cv2.VideoWriter_fourcc(*"MJPG"), 10, frame_size)
+    filenames = os.listdir(img_dir)
 
-for filename in glob.glob('plots/test/*.png'):
-    print(filename)
-    img = cv2.imread(filename)
-    out.write(img)
+    filenames = sorted(filenames, key=lambda x: int(x[:-4]))
 
-out.release()
+    for filename in filenames:
+        img = cv2.imread(img_dir + filename, cv2.IMREAD_GRAYSCALE)
+        img = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
+        video.write(img)
 
-cap = cv2. VideoCapture("output.avi")
+    video.release()
 
-frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
+img2vid('results/test/')
