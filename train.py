@@ -28,9 +28,9 @@ parser.add_argument('--save-freq', type=int, default=5, metavar='N',
                     help='how many batches to wait before logging training status')
 parser.add_argument('--embedding-size', type=int, default=32, metavar='N',
                     help='how many batches to wait before logging training status')
-parser.add_argument('--results_path', type=str, default='results/', metavar='N',
+parser.add_argument('--results-path', type=str, default='results/', metavar='N',
                     help='Where to store images')
-parser.add_argument('--checkpoint_path', type=str, default='checkpoints/', metavar='N',
+parser.add_argument('--checkpoint-path', type=str, default='checkpoints/', metavar='N',
                     help='Where to store models')
 parser.add_argument('--model', type=str, default='AE', metavar='N',
                     help='Which architecture to use')
