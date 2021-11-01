@@ -6,7 +6,7 @@ import numpy as np
 from PIL import Image as im
 import os
 
-from dataset import NPYDataset
+from dataset import SketchDataset
 from model import Network
 from interp import *
 
@@ -26,8 +26,10 @@ parser.add_argument('--print-freq', type=int, default=100, metavar='N',
                     help='how many batches to wait before logging training status')
 parser.add_argument('--save-freq', type=int, default=5, metavar='N',
                     help='how many batches to wait before logging training status')
-parser.add_argument('--embedding-size', type=int, default=32, metavar='N',
+parser.add_argument('--embedding-size', type=int, default=128, metavar='N',
                     help='how many batches to wait before logging training status')
+parser.add_argument('--data-path', type=str, default='data/png/', metavar='N',
+                    help='Where to load images')
 parser.add_argument('--results-path', type=str, default='results/', metavar='N',
                     help='Where to store images')
 parser.add_argument('--checkpoint-path', type=str, default='checkpoints/', metavar='N',
@@ -50,17 +52,17 @@ os.makedirs(args.checkpoint_path, exist_ok=True)
 os.makedirs(args.results_path + 'train/', exist_ok=True)
 os.makedirs(args.results_path + 'test/', exist_ok=True)
 
-model = Network(args)
+model = Network(args, input_size=(1, 256, 256))
 model.to(device) 
 
-opt = optim.Adam(model.parameters(), lr=1e-4, weight_decay=1e-2)
+opt = optim.Adam(model.parameters(), lr=1e-4, weight_decay=1e-1)
 #loss_fn = nn.MSELoss(reduction='sum')
 loss_fn = nn.BCELoss()
 
-classList = ['full_numpy_bitmap_hat']
+class_list = ['angel']
 # classList = None
-train_dataset = NPYDataset("data/", train=True, classList=classList)
-test_dataset = NPYDataset("data/", train=False, classList=classList)
+train_dataset = SketchDataset(args.data_path, train=True, class_list=class_list)
+test_dataset = SketchDataset(args.data_path, train=False, class_list=class_list)
 
 train_loader = torch.utils.data.DataLoader(
     train_dataset,
@@ -111,12 +113,13 @@ def train(model, data_loader, loss_fn, opt, epoch):
         for batch_idx, data in enumerate(data_loader):
             data = data.to(device).float()
             opt.zero_grad()
-            output = model(data) #* 255
+            output = model(data)
             
-            data = data / 255.0
+            data = data
             loss = loss_fn(output, data)
             avg_loss += loss.item()
             avg_loss_cnt += 1
+
             if batch_idx % args.print_freq == 0:
                 print('Epoch: [{0}][{1}/{2}]\t'
                   'Loss {3:.2f} ({4:.2f})\t'.format(
@@ -125,6 +128,7 @@ def train(model, data_loader, loss_fn, opt, epoch):
                       len(train_loader),
                       loss.item(),
                       avg_loss / avg_loss_cnt))
+
             loss.backward()
             opt.step()
 
@@ -135,7 +139,7 @@ def train(model, data_loader, loss_fn, opt, epoch):
 
         true_data = (data[0] * 255).detach().cpu().numpy()
         true = im.fromarray(np.uint8(true_data))
-        true.save(args.results_path + 'train/true.png')
+        true.save(args.results_path + 'train/true_epoch_' + str(epoch) + '.png')
         pred_data = (output[0] * 255).detach().cpu().numpy()
         pred = im.fromarray(np.uint8(pred_data))
         pred.save(args.results_path + 'train/pred_epoch_' + str(epoch) + '.png')
@@ -156,20 +160,19 @@ def test(model, data_loader, loss_fn, epoch=0):
         data = data.to(device).float()
         output = model(data)
 
-        loss = loss_fn(output, data / 255.0)
+        loss = loss_fn(output, data)
         avg_loss += loss.item()
         avg_loss_cnt += 1
 
         if batch_idx == 0:
-            idx = np.random.choice(len(data), 10, replace=False)
-            encoded = model.encode(data[idx].view(-1, 784))
+            idx = np.random.choice(len(data), 20, replace=False)
+            encoded = model.encode(data[idx].view(-1, 256 * 256))
 
             #y = linear(encoded, ibf=5, ease=sigmoid)
             y = catmullRom(encoded, ibf=20, ease=iden)
             #y = bspline(encoded, ibf=5, ease=iden)
             y = y.to(device)
-            output = model.decode(y)
-            output = torch.sigmoid(8*(output-0.5)) * 255
+            output = model.decode(y) * 255
 
             for i in range(len(output)):
                 save_img(output[i], str(i) + '.png')
@@ -185,4 +188,3 @@ def test(model, data_loader, loss_fn, epoch=0):
 # test(model, test_loader, loss_fn)
 train(model, train_loader, loss_fn, opt, 0)
 test(model, test_loader, loss_fn, 0)
-

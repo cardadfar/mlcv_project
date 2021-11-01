@@ -1,50 +1,44 @@
+import pathlib
 from torch.utils.data import Dataset
 import numpy as np
 import os
+from PIL import Image
+from torchvision import transforms as T
 
-class NPYDataset(Dataset):
-    def __init__(self, data_path, train=True, classList=None):
+class SketchDataset(Dataset):
+    def __init__(self, data_dir, train=True, class_list=None):
         super().__init__()
         
-        first = True
-        nFiles = len(os.listdir(data_path))
+        n_classes = len(class_list)
         data_list = []
-        for idx, filename in enumerate(os.listdir(data_path)):
 
-            dataset = filename[:-4]  # remove .npy
-            if classList != None and dataset not in classList:
-                continue 
+        if class_list is None:
+            class_list = os.listdir(data_dir)
 
-            if train:
-                print('Loading Train Data: [{0}/{1}] \t {2}'.format(idx, 
-                                                        nFiles,
-                                                        data_path + filename))
-            else:
-                print('Loading Test Data: [{0}/{1}] \t {2}'.format(idx, 
-                                                        nFiles,
-                                                        data_path + filename))
+        self.img_paths = []
 
-            data_raw = np.load(data_path + filename)
+        for classname in class_list:
+            img_dir = os.path.join(data_dir, classname)
+            n_imgs = len(os.listdir(img_dir))
 
-            data_raw_size = len(data_raw)
-            split = int(0.9 * data_raw_size)
+            split = int(n_imgs * 0.9)
 
             if train:
-                data = data_raw[:split]
-                data_size = split
+                for i in range(split):
+                    img_path = os.path.join(img_dir, str(i) + '.png')
+                    self.img_paths.append(img_path)
             else:
-                data = data_raw[split:]
-                data_size = data_raw_size - split
+                for i in range(split, n_imgs):
+                    img_path = os.path.join(img_dir, str(i) + '.png')
+                    self.img_paths.append(img_path)
 
-            data_list.append(data)
-        
-        self.data = np.concatenate(data_list, axis=0)
-        self.len = len(self.data)
-        
-        print('Loades {0} Images From {1} Classes.'.format(self.len, nFiles))
+        self.len = len(self.img_paths)
+        print('Loaded {0} images paths from {1} classes.'.format(self.len, n_classes))
 
     def __len__(self):
         return self.len
 
     def __getitem__(self, index):
-        return self.data[index].reshape((28,28))
+        img = Image.open(self.img_paths[index]).convert('L')
+        img = T.ToTensor()(img)
+        return img
