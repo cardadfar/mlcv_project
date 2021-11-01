@@ -7,7 +7,7 @@ import cv2
 from multiprocessing import Pool
 
 
-def vector_to_raster(vector_images, side=28, line_diameter=16, padding=16, bg_color=(0,0,0), fg_color=(1,1,1)):
+def vector_to_raster(vector_images, side=28, line_diameter=16, padding=16, bg_color=(0,0,0), fg_color=(1,1,1), name='default'):
     """
     padding and line_diameter are relative to the original 256x256 image.
     https://github.com/googlecreativelab/quickdraw-dataset/issues/19#issuecomment-402247262
@@ -52,12 +52,12 @@ def vector_to_raster(vector_images, side=28, line_diameter=16, padding=16, bg_co
         data = surface.get_data()
         raster_image = np.copy(np.asarray(data)[::4])
         raster_image = raster_image.reshape([side, side])
-        raster_images.append(raster_image)
+        cv2.imwrite('data/png/{}/{}.png'.format(name, i), raster_image)
     
     return np.array(raster_images)
 
 
-def process_drawings(path):
+def process_drawings(path, name):
     """
     https://github.com/googlecreativelab/quickdraw-dataset/blob/master/examples/binary_file_parser.py
     """
@@ -95,20 +95,18 @@ def process_drawings(path):
 
     drawings = unpack_drawings(path)
     drawings = list(map(lambda x: x['image'], drawings))
-    drawings = vector_to_raster(drawings, side=256)
-
-    return drawings
+    vector_to_raster(drawings, side=256, name=name)
 
 
 def worker(filename):
     print('started', filename)
-    drawings = process_drawings('data/binary/' + filename)
-    np.savez_compressed('data/npz/' + filename[:-4] + '.npz', drawings)
+    os.makedirs('data/png/' + filename[:-4], exist_ok=True)
+    process_drawings('data/binary/' + filename, filename[:-4])
     print('finished', filename)
 
 
 if __name__ == '__main__':
-    os.makedirs('data/npz/', exist_ok=True)
+    os.makedirs('data/png/', exist_ok=True)
     filenames = os.listdir('data/binary/')
     # with Pool(6) as p:
     #     p.map(worker, filenames)
