@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>Data Visualizer</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
+			body {
+				background-color: #f0f0f0;
+				color: #444;
+				margin: 0;
+				padding: 0;
+                overflow: hidden;
+			}
+
+            #imgSelect {
+                position: absolute;
+                display: none;
+                bottom: 0;
+                right: 0;
+                width: 300px;
+                height: 300px;
+            }
+            
+		</style>
+		<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+	</head>
+	<body>
+
+
+		<div id="container"></div>
+
+        <img id="imgSelect" src="../data/test.jpeg">
+
+		<script type="module">
+
+			import * as THREE from "/visualize/modules/three.module.js";
+
+			import Stats from "/visualize/modules/stats.module.js";
+			import { GUI } from "/visualize/modules/dat.gui.module.js";
+			import { OrbitControls } from "/visualize/modules/OrbitControls.js";
+			
+			var container, stats, controls;
+			var camera, scene, renderer, raycaster;
+            var mouse = new THREE.Vector2();
+            var datapts = [];
+
+            var DATA_PATH = "../data/";
+
+			init();
+			animate();
+
+			function init() {
+
+				container = document.getElementById( 'container' );
+
+				scene = new THREE.Scene();
+				scene.background = new THREE.Color( 0xf0f0f0 );
+
+				renderer = new THREE.WebGLRenderer( { antialias: true } );
+				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				renderer.shadowMap.enabled = true;
+				container.appendChild( renderer.domElement );
+
+				stats = new Stats();
+
+                const size = 100; 
+                const divisions = 10; 
+                const gridHelper = new THREE.GridHelper( size, divisions ); 
+                scene.add( gridHelper );
+
+				camera = new THREE.PerspectiveCamera( 50, window.innerWidth / window.innerHeight, 1, 10000 );
+				camera.position.set( 500, 500, 0 );
+				scene.add( camera );
+
+				stats = new Stats();
+				container.appendChild( stats.dom );
+
+                controls = new OrbitControls( camera, renderer.domElement );
+                controls.target = new THREE.Vector3(0, 0, 0);
+				controls.addEventListener( 'change', render );
+
+                raycaster = new THREE.Raycaster();
+                
+                $.getJSON( "data.json", function( data ) {
+                    var nclasses = parseInt(data["nclasses"]);
+                    var dims = parseInt(data["dims"]);
+
+                    var colors = [];
+
+                    for(var i = 0; i < nclasses; i++)
+                    {
+                        colors[i] = '#'+(0x1000000+Math.random()*0xffffff).toString(16).substr(1,6);
+                    }
+
+                    for(var i = 0; i < data["data"].length; i++)
+                    {
+                        var datapt = data["data"][i];
+                        var classID = datapt["id"];
+                        var img_path = datapt["img_path"];
+                        var x = parseInt(datapt["encoding"][0]);
+                        var y = parseInt(datapt["encoding"][1]);
+                        var z = parseInt(datapt["encoding"][2]);
+                        
+                        var geometry = new THREE.SphereGeometry( 5, 16, 8 );
+                        var material = new THREE.MeshBasicMaterial( { color: colors[classID] } );
+                        var sphere = new THREE.Mesh( geometry, material );
+                        sphere.position.set( x, y, z );
+                        sphere.name = img_path;
+                        console.log( sphere.position );
+                        scene.add( sphere );
+                        
+                        datapts.push( sphere );
+                    }
+                    
+                    document.addEventListener( 'mousemove', onDocumentMouseMove, false );
+                    
+                });
+
+			}
+
+            function onDocumentMouseMove( event ) {
+                mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+                mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+                raycaster.setFromCamera( mouse.clone(), camera );   
+                
+                var objects = raycaster.intersectObjects(datapts);
+                if (objects.length > 0) {
+
+                    var nearestDistance = 99999;
+                    var nearestObj = null;
+
+                    for (var i = 0; i < objects.length; i++) {
+                        if(nearestDistance > objects[i]["distance"]) {
+                            nearestDistance = objects[i]["distance"];
+                            nearestObj = objects[i]["object"];
+                        }
+                    }
+
+                    $("#imgSelect").attr("src", DATA_PATH + nearestObj.name);
+                    $("#imgSelect").css("display", "block");
+                    
+                }
+                else {
+                    $("#imgSelect").css("display", "none");
+                }
+            }
+
+
+			function animate() {
+
+                raycaster.setFromCamera(mouse, camera);
+                var intersects = raycaster.intersectObject(scene, true);
+
+                controls.update()
+				requestAnimationFrame( animate );
+				render();
+				stats.update();	
+			}
+
+			function render() {
+				renderer.render( scene, camera );
+			}
+
+		</script>
+
+	</body>
+</html>

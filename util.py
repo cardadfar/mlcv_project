@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 import os
-
+import json
 
 def img2vid(img_dir, frame_size=(28, 28), output_path='video.avi'):
     video = cv2.VideoWriter(output_path, cv2.VideoWriter_fourcc(*"MJPG"), 10, frame_size)
@@ -15,6 +15,35 @@ def img2vid(img_dir, frame_size=(28, 28), output_path='video.avi'):
         video.write(img)
 
     video.release()
+
+def save2json(img_paths, classIDs, encodings):
+    '''
+    img_paths: (N) paths to images
+    classIDs: (N) IDs of each input class
+    encodings: (N x embedding) latent-space representation
+    '''
+
+    N = len(img_paths)
+
+    data = []
+    nClasses = 0
+    for i in range(N):
+        obj = {}
+        obj["id"] = classIDs[i]
+        obj["img_path"] = img_paths[i]
+        obj["encoding"] = encodings[i]
+        data.append(obj)
+
+        nClasses = max(nClasses, classIDs[i])
+        dims = len(encodings[i])
+    
+    results = {}
+    results["dims"] = dims
+    results["nclasses"] = nClasses
+    results["data"] = data
+
+    with open('visualize/data.json', 'w') as fp:
+        json.dump(results, fp)
 
 
 img2vid('results/test/')
