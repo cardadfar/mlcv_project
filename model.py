@@ -12,11 +12,7 @@ class CNN_Encoder(nn.Module):
 
         #convolutions
         self.conv = nn.Sequential(
-            nn.Conv2d(in_channels=1,
-                     out_channels=self.channel_mult*1,
-                     kernel_size=4,
-                     stride=1,
-                     padding=1),
+            nn.Conv2d(1, self.channel_mult*1, 4, 2, 1),
             nn.LeakyReLU(0.2, inplace=True),
             nn.Conv2d(self.channel_mult*1, self.channel_mult*2, 4, 2, 1),
             nn.BatchNorm2d(self.channel_mult*2),
@@ -27,7 +23,13 @@ class CNN_Encoder(nn.Module):
             nn.Conv2d(self.channel_mult*4, self.channel_mult*8, 4, 2, 1),
             nn.BatchNorm2d(self.channel_mult*8),
             nn.LeakyReLU(0.2, inplace=True),
-            nn.Conv2d(self.channel_mult*8, self.channel_mult*16, 3, 2, 1),
+            nn.Conv2d(self.channel_mult*8, self.channel_mult*10, 4, 2, 1),
+            nn.BatchNorm2d(self.channel_mult*10),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Conv2d(self.channel_mult*10, self.channel_mult*12, 4, 2, 1),
+            nn.BatchNorm2d(self.channel_mult*12),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Conv2d(self.channel_mult*12, self.channel_mult*16, 4, 2, 1),
             nn.BatchNorm2d(self.channel_mult*16),
             nn.LeakyReLU(0.2, inplace=True)
         )
@@ -53,9 +55,8 @@ class CNN_Encoder(nn.Module):
 class CNN_Decoder(nn.Module):
     def __init__(self, embedding_size, input_size=(1, 28, 28)):
         super(CNN_Decoder, self).__init__()
-        self.input_height = 28
-        self.input_width = 28
         self.input_dim = embedding_size
+        self.input_size = input_size
         self.channel_mult = 16
         self.output_channels = 1
         self.fc_output_dim = 512
@@ -67,41 +68,47 @@ class CNN_Decoder(nn.Module):
         )
 
         self.deconv = nn.Sequential(
-            # input is Z, going into a convolution
-            nn.ConvTranspose2d(self.fc_output_dim, self.channel_mult*4,
+            nn.ConvTranspose2d(self.fc_output_dim, self.channel_mult*12,
                                 4, 1, 0, bias=False),
+            nn.BatchNorm2d(self.channel_mult*12),
+            nn.ReLU(True),
+            nn.ConvTranspose2d(self.channel_mult*12, self.channel_mult*8,
+                                4, 2, 1, bias=False),
+            nn.BatchNorm2d(self.channel_mult*8),
+            nn.ReLU(True),
+            nn.ConvTranspose2d(self.channel_mult*8, self.channel_mult*6,
+                                4, 2, 1, bias=False),
+            nn.BatchNorm2d(self.channel_mult*6),
+            nn.ReLU(True),
+            nn.ConvTranspose2d(self.channel_mult*6, self.channel_mult*4,
+                                4, 2, 1, bias=False),
             nn.BatchNorm2d(self.channel_mult*4),
             nn.ReLU(True),
-            # state size. self.channel_mult*32 x 4 x 4
             nn.ConvTranspose2d(self.channel_mult*4, self.channel_mult*2,
-                                3, 2, 1, bias=False),
+                                4, 2, 1, bias=False),
             nn.BatchNorm2d(self.channel_mult*2),
             nn.ReLU(True),
-            # state size. self.channel_mult*16 x 7 x 7
             nn.ConvTranspose2d(self.channel_mult*2, self.channel_mult*1,
                                 4, 2, 1, bias=False),
             nn.BatchNorm2d(self.channel_mult*1),
             nn.ReLU(True),
-            # state size. self.channel_mult*8 x 14 x 14
             nn.ConvTranspose2d(self.channel_mult*1, self.output_channels, 4, 2, 1, bias=False),
             nn.Sigmoid()
-            # state size. self.output_channels x 28 x 28
         )
 
     def forward(self, x):
         x = self.fc(x)
         x = x.view(-1, self.fc_output_dim, 1, 1)
         x = self.deconv(x)
-        return x.view(-1, self.input_height, self.input_width)
+        return x.view(-1, *self.input_size)
 
 
 class Network(nn.Module):
-    def __init__(self, args):
+    def __init__(self, args, input_size):
         super(Network, self).__init__()
-        output_size = args.embedding_size
-        self.encoder = CNN_Encoder(output_size)
-
-        self.decoder = CNN_Decoder(args.embedding_size)
+        self.input_size = input_size
+        self.encoder = CNN_Encoder(args.embedding_size, input_size)
+        self.decoder = CNN_Decoder(args.embedding_size, input_size)
 
     def encode(self, x):
         return self.encoder(x)
@@ -110,6 +117,5 @@ class Network(nn.Module):
         return self.decoder(z)
 
     def forward(self, x):
-        z = self.encode(x.view(-1, 784))
+        z = self.encode(x.view(-1, *self.input_size))
         return self.decode(z)
-
