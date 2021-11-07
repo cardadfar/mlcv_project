@@ -1,4 +1,4 @@
-from sklearn.decomposition import PCA
+from sklearn.manifold import TSNE
 import json
 import numpy as np
 
@@ -9,12 +9,10 @@ for i in range(len(data["data"])):
     encoding = data["data"][i]["encoding"]
     X.append( encoding )
 
-pca = PCA(n_components=3)
-pca.fit(X)
-X_pca = pca.transform(X)
+X_tsne = TSNE(n_components=3).fit_transform(X)
 
 for i in range(len(data["data"])):
-    data["data"][i]["encoding"] = X_pca[i].tolist()
+    data["data"][i]["encoding"] = X_tsne[i].tolist()
 
-with open('data_pca.json', 'w') as fp:
+with open('data_tsne.json', 'w') as fp:
     json.dump(data, fp, indent=4)
