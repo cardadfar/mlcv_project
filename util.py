@@ -16,11 +16,12 @@ def img2vid(img_dir, frame_size=(28, 28), output_path='video.avi'):
 
     video.release()
 
-def save2json(img_paths, classIDs, encodings):
+def save2json(img_paths, classIDs, encodings, tweens):
     '''
     img_paths: (N) paths to images
     classIDs: (N) IDs of each input class
     encodings: (N x embedding) latent-space representation
+    tweens: (A x B x embedding) multiple interpolation values for visualizing
     '''
 
     N = len(img_paths)
@@ -36,11 +37,20 @@ def save2json(img_paths, classIDs, encodings):
 
         nClasses = max(nClasses, classIDs[i])
         dims = len(encodings[i])
+
+    interp = []
+    for i in range(len(tweens)):
+        interp.append([])
+        for j in range(len(tweens[i])):
+            obj = {}
+            obj["encoding"] = tweens[i][j]
+            interp[i].append(obj)
     
     results = {}
     results["dims"] = dims
     results["nclasses"] = nClasses
     results["data"] = data
+    results["interp"] = interp
 
     with open('visualize/data.json', 'w') as fp:
         json.dump(results, fp)
