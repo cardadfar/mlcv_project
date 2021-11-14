@@ -127,30 +127,28 @@
                         datapts.push( sphere );
                     }
                     
-                    var points = [];
-                    for(var i = 0; i < data["interp"].length; i++)
+                    if(data["interp"] != undefined)
                     {
-                        for(var j = 0; j < data["interp"][i].length; j++)
+                        var points = [];
+                        for(var i = 0; i < data["interp"].length; i++)
                         {
-                            var datapt = data["interp"][i][j];
-                            var x = parseInt(datapt["encoding"][0] * scaleX);
-                            var y = parseInt(datapt["encoding"][1] * scaleY);
-                            var z = parseInt(datapt["encoding"][2] * scaleZ);
+                            for(var j = 0; j < data["interp"][i].length; j++)
+                            {
+                                var datapt = data["interp"][i][j];
+                                var x = parseInt(datapt["encoding"][0] * scaleX);
+                                var y = parseInt(datapt["encoding"][1] * scaleY);
+                                var z = parseInt(datapt["encoding"][2] * scaleZ);
 
-                            points.push( new THREE.Vector3( x, y, z ) );
+                                points.push( new THREE.Vector3( x, y, z ) );
+                            }
+
+                            var lineGeometry = new THREE.BufferGeometry().setFromPoints( points );
+                            var lineMaterial = new THREE.LineBasicMaterial({ color: 0x0000ff, linewidth: 100 });
+                            var line = new THREE.Line( lineGeometry, lineMaterial );
+                            scene.add( line );
+
                         }
-
-                        var lineGeometry = new THREE.BufferGeometry().setFromPoints( points );
-                        var lineMaterial = new THREE.LineBasicMaterial({ color: 0x0000ff, linewidth: 100 });
-                        var line = new THREE.Line( lineGeometry, lineMaterial );
-                        scene.add( line );
-
                     }
-                    
-                    var lineGeometry = new THREE.BufferGeometry().setFromPoints( points );
-				    var lineMaterial = new THREE.LineBasicMaterial({ color: 0x0000ff, linewidth: 100 });
-                    var line = new THREE.Line( lineGeometry, lineMaterial );
-                    scene.add( line );
                     
                     document.addEventListener( 'mousemove', onDocumentMouseMove, false );
 

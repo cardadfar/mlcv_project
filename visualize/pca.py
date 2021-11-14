@@ -23,11 +23,11 @@ if USEINTERP:
 pca = PCA(n_components=3)
 pca.fit(X)
 X_pca = pca.transform(X)
-Xt_pca = pca.transform(Xt)
+if USEINTERP:
+    Xt_pca = pca.transform(Xt)
 
 for i in range(len(data["data"])):
     data["data"][i]["encoding"] = X_pca[i].tolist()
-
 
 if USEINTERP:
     k = 0
