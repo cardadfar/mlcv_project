@@ -119,3 +119,21 @@ class Network(nn.Module):
     def forward(self, x):
         z = self.encode(x.view(-1, *self.input_size))
         return self.decode(z)
+
+
+class Discriminator(nn.Module):
+    def __init__(self, args, input_size):
+        super(Discriminator, self).__init__()
+        self.input_size = input_size
+        self.conv = CNN_Encoder(64, input_size)
+        self.fc = nn.Sequential(
+            nn.Linear(64, 32),
+            nn.BatchNorm1d(32),
+            nn.LeakyReLU(0.2),
+            nn.Linear(32, 1)
+        )
+
+    def forward(self, x):
+        z = self.conv(x.view(-1, *self.input_size))
+        z = self.fc(z)
+        return torch.sigmoid(z)

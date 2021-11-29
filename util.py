@@ -45,5 +45,4 @@ def save2json(img_paths, classIDs, encodings):
     with open('visualize/data.json', 'w') as fp:
         json.dump(results, fp)
 
-
-img2vid('results/test/')
+# img2vid('results/test/', (256, 256))

@@ -6,7 +6,7 @@ from PIL import Image
 from torchvision import transforms as T
 
 class SketchDataset(Dataset):
-    def __init__(self, data_dir, train=True, class_list=None):
+    def __init__(self, data_dir, train=True, class_list=None, first_k=2000):
         super().__init__()
         
         n_classes = len(class_list)
@@ -24,15 +24,16 @@ class SketchDataset(Dataset):
             n_imgs = len(os.listdir(img_dir))
 
             split = int(n_imgs * 0.9)
+            order = np.random.permutation(n_imgs)
 
             if train:
-                for i in range(split):
-                    img_path = os.path.join(img_dir, str(i) + '.png')
+                for i in order[:first_k]:
+                    img_path = os.path.join(img_dir, str(i) + '.png').replace('\\', '/')
                     self.img_paths.append(img_path)
                     self.labels.append(k)
             else:
-                for i in range(split, n_imgs):
-                    img_path = os.path.join(img_dir, str(i) + '.png')
+                for i in order[split:split + first_k]:
+                    img_path = os.path.join(img_dir, str(i) + '.png').replace('\\', '/')
                     self.img_paths.append(img_path)
                     self.labels.append(k)
 
