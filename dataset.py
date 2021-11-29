@@ -49,3 +49,33 @@ class SketchDataset(Dataset):
         img = T.ToTensor()(img)
         label = self.labels[index]
         return img, label, path
+
+
+
+class TestDataset(Dataset):
+    def __init__(self, data_dir):
+        super().__init__()
+        
+
+        self.class_list = os.listdir(data_dir)
+
+        self.img_paths = []
+        self.labels = []
+
+        for k, classname in enumerate(self.class_list):
+            img_dir = os.path.join(data_dir, classname)
+            self.img_paths.append(img_dir)
+            self.labels.append(-1)
+
+        self.len = len(self.img_paths)
+        print('Loaded {0} images.'.format(self.len))
+
+    def __len__(self):
+        return self.len
+
+    def __getitem__(self, index):
+        path = self.img_paths[index]
+        img = Image.open(path).convert('L')
+        img = T.ToTensor()(img)
+        label = self.labels[index]
+        return img, label, path
