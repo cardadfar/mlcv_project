@@ -2,7 +2,7 @@ from sklearn.decomposition import PCA
 import json
 import numpy as np
 
-data = json.load(open('data_keyframe.json', 'r'))
+data = json.load(open('data.json', 'r'))
 
 USEINTERP = False
 if "interp" in data:

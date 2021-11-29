@@ -45,6 +45,10 @@
             var mouse = new THREE.Vector2();
             var datapts = [];
 
+            var classObjs = {};
+            var classIDs = {};
+            var numClasses = 0;
+
             var DATA_PATH = "../";
 
 			init();
@@ -109,7 +113,6 @@
                         var y = parseInt(datapt["encoding"][1] * scaleY);
                         var z = parseInt(datapt["encoding"][2] * scaleZ);
 
-
                         minX = x < minX ? x : minX;
                         maxX = x > maxX ? x : maxX;
                         minY = y < minY ? y : minY;
@@ -117,14 +120,22 @@
                         minZ = z < minZ ? z : minZ;
                         maxZ = z > maxZ ? z : maxZ;
                         
-                        var geometry = new THREE.SphereGeometry( 5, 16, 8 );
+                        var geometry = new THREE.SphereGeometry( 15, 16, 8 );
                         var material = new THREE.MeshBasicMaterial( { color: colors[classID] } );
                         var sphere = new THREE.Mesh( geometry, material );
                         sphere.position.set( x, y, z );
                         sphere.name = img_path;
-                        scene.add( sphere );
+                        //classObjs.add( sphere );
+
+                        var className = img_path.split("/")[2];
+                        if( classObjs[className] == undefined) { classObjs[className] = new THREE.Object3D(); }
+                        classObjs[className].add( sphere );
                         
                         datapts.push( sphere );
+                    }
+
+                    for(var className in classObjs) {
+                        scene.add( classObjs[className] );
                     }
                     
                     if(data["interp"] != undefined)
@@ -151,6 +162,7 @@
                     }
                     
                     document.addEventListener( 'mousemove', onDocumentMouseMove, false );
+                    document.addEventListener( 'click', onDocumentMouseClick, false );
 
                     var dimX = maxX - minX;
                     var dimZ = maxZ - minZ;
@@ -185,7 +197,6 @@
                             nearestObj = objects[i]["object"];
                         }
                     }
-                    console.log(nearestObj.name)
                     $("#imgSelect").attr("src", DATA_PATH + nearestObj.name);
                     $("#imgSelect").css("display", "block");
                     
@@ -195,6 +206,49 @@
                 }
             }
 
+            function onDocumentMouseClick( event ) {
+                mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+                mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+                raycaster.setFromCamera( mouse.clone(), camera );   
+                
+                var objects = raycaster.intersectObjects(datapts);
+                if (objects.length > 0) {
+
+                    var nearestDistance = 99999;
+                    var nearestObj = null;
+
+                    for (var i = 0; i < objects.length; i++) {
+                        if(nearestDistance > objects[i]["distance"]) {
+                            nearestDistance = objects[i]["distance"];
+                            nearestObj = objects[i]["object"];
+                        }
+                    }
+
+                    for(var className in classObjs) {
+                        classObjs[className].visible = false;
+                    }
+
+                    var className = nearestObj.name.split("/")[2];
+                    classObjs[className].visible = true;
+                    
+                }
+                else {
+                    for(var className in classObjs) {
+                        classObjs[className].visible = true;
+                    }
+                }
+            }
+
+            function classNametoID(className) {
+                var id = classIDs[className];
+                if( id == undefined ) {
+                    classIDs[className] = numClasses;
+                    numClasses++;
+
+                    id = classIDs[className];
+                }
+                return id;
+            }
 
 			function animate() {
 
