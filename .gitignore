@@ -1,7 +1,6 @@
 *.pyc
 .DS_Store
 data
-checkpoints
 plots
 results
 __pycache__
