@@ -45,7 +45,7 @@
             var mouse = new THREE.Vector2();
             var datapts = [];
 
-            var DATA_PATH = "../data/";
+            var DATA_PATH = "../";
 
 			init();
 			animate();
@@ -65,11 +65,6 @@
 
 				stats = new Stats();
 
-                const size = 100; 
-                const divisions = 10; 
-                const gridHelper = new THREE.GridHelper( size, divisions ); 
-                scene.add( gridHelper );
-
 				camera = new THREE.PerspectiveCamera( 50, window.innerWidth / window.innerHeight, 1, 10000 );
 				camera.position.set( 500, 500, 0 );
 				scene.add( camera );
@@ -83,7 +78,7 @@
 
                 raycaster = new THREE.Raycaster();
                 
-                $.getJSON( "data.json", function( data ) {
+                $.getJSON( "data_pca.json", function( data ) {
                     var nclasses = parseInt(data["nclasses"]);
                     var dims = parseInt(data["dims"]);
 
@@ -94,27 +89,80 @@
                         colors[i] = '#'+(0x1000000+Math.random()*0xffffff).toString(16).substr(1,6);
                     }
 
+                    var scaleX = 1000;
+                    var scaleY = 1000;
+                    var scaleZ = 1000;
+
+                    var minX = 0;
+                    var maxX = 0;
+                    var minY = 0;
+                    var maxY = 0;
+                    var minZ = 0;
+                    var maxZ = 0;
+
                     for(var i = 0; i < data["data"].length; i++)
                     {
                         var datapt = data["data"][i];
                         var classID = datapt["id"];
                         var img_path = datapt["img_path"];
-                        var x = parseInt(datapt["encoding"][0]);
-                        var y = parseInt(datapt["encoding"][1]);
-                        var z = parseInt(datapt["encoding"][2]);
+                        var x = parseInt(datapt["encoding"][0] * scaleX);
+                        var y = parseInt(datapt["encoding"][1] * scaleY);
+                        var z = parseInt(datapt["encoding"][2] * scaleZ);
+
+
+                        minX = x < minX ? x : minX;
+                        maxX = x > maxX ? x : maxX;
+                        minY = y < minY ? y : minY;
+                        maxY = y > maxY ? y : maxY;
+                        minZ = z < minZ ? z : minZ;
+                        maxZ = z > maxZ ? z : maxZ;
                         
                         var geometry = new THREE.SphereGeometry( 5, 16, 8 );
                         var material = new THREE.MeshBasicMaterial( { color: colors[classID] } );
                         var sphere = new THREE.Mesh( geometry, material );
                         sphere.position.set( x, y, z );
                         sphere.name = img_path;
-                        console.log( sphere.position );
                         scene.add( sphere );
                         
                         datapts.push( sphere );
                     }
                     
+                    if(data["interp"] != undefined)
+                    {
+                        var points = [];
+                        for(var i = 0; i < data["interp"].length; i++)
+                        {
+                            for(var j = 0; j < data["interp"][i].length; j++)
+                            {
+                                var datapt = data["interp"][i][j];
+                                var x = parseInt(datapt["encoding"][0] * scaleX);
+                                var y = parseInt(datapt["encoding"][1] * scaleY);
+                                var z = parseInt(datapt["encoding"][2] * scaleZ);
+
+                                points.push( new THREE.Vector3( x, y, z ) );
+                            }
+
+                            var lineGeometry = new THREE.BufferGeometry().setFromPoints( points );
+                            var lineMaterial = new THREE.LineBasicMaterial({ color: 0x0000ff, linewidth: 100 });
+                            var line = new THREE.Line( lineGeometry, lineMaterial );
+                            scene.add( line );
+
+                        }
+                    }
+                    
                     document.addEventListener( 'mousemove', onDocumentMouseMove, false );
+
+                    var dimX = maxX - minX;
+                    var dimZ = maxZ - minZ;
+
+                    var centX = (maxX + minX) / 2.0;
+                    var centZ = (maxZ + minZ) / 2.0;
+
+                    const size = dimX > dimZ ? dimX : dimZ; 
+                    const divisions = 10; 
+                    const gridHelper = new THREE.GridHelper( size, divisions ); 
+                    gridHelper.position.set( centX, 0, centZ ); 
+                    scene.add( gridHelper );
                     
                 });
 
@@ -137,7 +185,7 @@
                             nearestObj = objects[i]["object"];
                         }
                     }
-
+                    console.log(nearestObj.name)
                     $("#imgSelect").attr("src", DATA_PATH + nearestObj.name);
                     $("#imgSelect").css("display", "block");
                     

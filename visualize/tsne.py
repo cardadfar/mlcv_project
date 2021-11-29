@@ -1,4 +1,4 @@
-from sklearn.decomposition import PCA
+from sklearn.manifold import TSNE
 import json
 import numpy as np
 
@@ -9,32 +9,28 @@ if "interp" in data:
     USEINTERP = True
 
 X = []
-Xt = []
 for i in range(len(data["data"])):
     encoding = data["data"][i]["encoding"]
     X.append( encoding )
 
+n = len(X)
 if USEINTERP:
     for i in range(len(data["interp"])):
         for j in range(len(data["interp"][i])):
             encoding = data["interp"][i][j]["encoding"]
-            Xt.append( encoding )
-
-pca = PCA(n_components=3)
-pca.fit(X)
-X_pca = pca.transform(X)
-if USEINTERP:
-    Xt_pca = pca.transform(Xt)
+            X.append( encoding )
+            
+X_tsne = TSNE(n_components=3).fit_transform(X)
 
 for i in range(len(data["data"])):
-    data["data"][i]["encoding"] = X_pca[i].tolist()
+    data["data"][i]["encoding"] = X_tsne[i].tolist()
 
 if USEINTERP:
     k = 0
     for i in range(len(data["interp"])):
         for j in range(len(data["interp"][i])):
-            data["interp"][i][j]["encoding"] = Xt_pca[k].tolist()
+            data["interp"][i][j]["encoding"] = X_tsne[k + n].tolist()
             k += 1
 
-with open('data_pca.json', 'w') as fp:
+with open('data_tsne.json', 'w') as fp:
     json.dump(data, fp, indent=4)
