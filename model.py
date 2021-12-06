@@ -13,6 +13,7 @@ class CNN_Encoder(nn.Module):
         #convolutions
         self.conv = nn.Sequential(
             nn.Conv2d(1, self.channel_mult*1, 4, 2, 1),
+            nn.BatchNorm2d(self.channel_mult*1),
             nn.LeakyReLU(0.2, inplace=True),
             nn.Conv2d(self.channel_mult*1, self.channel_mult*2, 4, 2, 1),
             nn.BatchNorm2d(self.channel_mult*2),
@@ -57,9 +58,9 @@ class CNN_Decoder(nn.Module):
         super(CNN_Decoder, self).__init__()
         self.input_dim = embedding_size
         self.input_size = input_size
-        self.channel_mult = 16
+        self.channel_mult = 32
         self.output_channels = 1
-        self.fc_output_dim = 512
+        self.fc_output_dim = 1024
 
         self.fc = nn.Sequential(
             nn.Linear(self.input_dim, self.fc_output_dim),
@@ -68,19 +69,19 @@ class CNN_Decoder(nn.Module):
         )
 
         self.deconv = nn.Sequential(
-            nn.ConvTranspose2d(self.fc_output_dim, self.channel_mult*12,
+            nn.ConvTranspose2d(self.fc_output_dim, self.channel_mult*15,
                                 4, 1, 0, bias=False),
-            nn.BatchNorm2d(self.channel_mult*12),
+            nn.BatchNorm2d(self.channel_mult*15),
             nn.ReLU(True),
-            nn.ConvTranspose2d(self.channel_mult*12, self.channel_mult*8,
+            nn.ConvTranspose2d(self.channel_mult*15, self.channel_mult*10,
+                                4, 2, 1, bias=False),
+            nn.BatchNorm2d(self.channel_mult*10),
+            nn.ReLU(True),
+            nn.ConvTranspose2d(self.channel_mult*10, self.channel_mult*8,
                                 4, 2, 1, bias=False),
             nn.BatchNorm2d(self.channel_mult*8),
             nn.ReLU(True),
-            nn.ConvTranspose2d(self.channel_mult*8, self.channel_mult*6,
-                                4, 2, 1, bias=False),
-            nn.BatchNorm2d(self.channel_mult*6),
-            nn.ReLU(True),
-            nn.ConvTranspose2d(self.channel_mult*6, self.channel_mult*4,
+            nn.ConvTranspose2d(self.channel_mult*8, self.channel_mult*4,
                                 4, 2, 1, bias=False),
             nn.BatchNorm2d(self.channel_mult*4),
             nn.ReLU(True),
