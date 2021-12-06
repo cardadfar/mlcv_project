@@ -28,11 +28,13 @@ if __name__ == '__main__':
                         help='enables CUDA training')
     parser.add_argument('--seed', type=int, default=42, metavar='S',
                         help='random seed (default: 1)')
+    parser.add_argument('--img-class', type=str, default='apple', metavar='N',
+                        help='class to use')
     parser.add_argument('--print-freq', type=int, default=100, metavar='N',
                         help='how many batches to wait before logging training status')
     parser.add_argument('--save-freq', type=int, default=5, metavar='N',
                         help='how many batches to wait before logging training status')
-    parser.add_argument('--embedding-size', type=int, default=128, metavar='N',
+    parser.add_argument('--embedding-size', type=int, default=256, metavar='N',
                         help='how many batches to wait before logging training status')
     parser.add_argument('--data-path', type=str, default='data/png/', metavar='N',
                         help='Where to load images')
@@ -54,8 +56,10 @@ if __name__ == '__main__':
 
     print(args)
 
+    MODEL_TYPE = args.img_class
+
     def load_model(model, loss_fn, opt, epoch):
-        checkpoint = torch.load(args.checkpoint_path + "model_epoch_" + str(epoch), map_location=device)
+        checkpoint = torch.load("checkpoints/checkpoints/" + MODEL_TYPE + "/model_epoch_5.zip", map_location=device)
         model.load_state_dict(checkpoint['model_state_dict'])
         opt.load_state_dict(checkpoint['optimizer_state_dict'])
         epoch = checkpoint['epoch']
@@ -85,15 +89,15 @@ if __name__ == '__main__':
                 encoded = model.encode(imgs)
                 print(encoded.shape)
 
-                y = linear(encoded, ibf=5, ease=sigmoid)
-                #y = catmullRom(encoded, ibf=20, ease=iden)
-                #y = bspline(encoded, ibf=5, ease=iden)
+                y = linear(encoded, ibf=20, ease=sigmoid)
+                #y = catmullRom(encoded, ibf=20, ease=sigmoid)
                 y = y.to(device)
 
-                print(y.shape)
 
                 output = model.decode(y)
 
+                output = torch.where(output > 0.5, 1.0, torch.where(output > 0.3, 0.5, 0.0).double())
+                
                 for i in range(len(output)):
                     save_img(output[i], str(i) + '.png')
                 
@@ -105,9 +109,7 @@ if __name__ == '__main__':
     os.makedirs(args.results_path + 'train/', exist_ok=True)
     os.makedirs(args.results_path + 'test/', exist_ok=True)
 
-    # class_list = os.listdir('data/png')
-    class_list = ['airplane'] # , 'apple', 'bear', 'bicycle', 'bird', 'broccoli', 'The Eiffel Tower', 'The Mona Lisa']
-    test_dataset = TestDataset(args.data_path)
+    test_dataset = TestDataset('data/png/test/' + MODEL_TYPE)
 
     model = Network(args, input_size=(1, 256, 256))
     model.to(device) 
@@ -127,6 +129,6 @@ if __name__ == '__main__':
         pin_memory=True,
         sampler=None,
         drop_last=True)
-
+        
     model, loss_fn, opt, epoch = load_model(model, loss_fn, opt, 20)
     test(model, test_loader, loss_fn, 0)

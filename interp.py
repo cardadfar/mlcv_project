@@ -1,7 +1,9 @@
+from os import tcsetpgrp
 import torch
 import numpy as np
+import math
 
-def sigmoid(x, scale=15.0):
+def sigmoid(x, scale=10.0):
     return 1.0 / (1.0 + np.exp(scale * (-x + 0.5)))
 
 def iden(x):
@@ -66,6 +68,7 @@ def catmullRom(x, ibf=1, ease=iden):
 
     y = torch.Tensor((n-1)*(ibf+1)+1, encode_dim)
     idx = 0
+    '''
     for i in range(n-1):
         y[idx] = x[i]
         idx += 1
@@ -81,12 +84,44 @@ def catmullRom(x, ibf=1, ease=iden):
             idx += 1
     
     y[idx] = x[n-1]
+    '''
+    L = []
+    T = []
+    for f in range(n):
+        tn = f / float(n)
+        t = ease(tn)
+        T.append(t)
+
+    for f in range((n-1)*(ibf+1)+1):
+        tn = f / ((n-1)*(ibf+1)+1.0)
+        t = ease(tn)
+        i = math.floor(t * (n-1))
+
+        t1 = i / float(n-1)
+        t2 = (i+1) / float(n-1)
+        t = (t - t1) / (t2 - t1)
+        #print(t)
+
+        if i == n - 1:
+            ibtwn = x[i]
+        else:
+            L.append(t)
+            if n == 2:
+                ibtwn = catmullRom_interp(x[i], x[i], x[i+1], x[i+1], t)
+            elif i == 0:
+                ibtwn = catmullRom_interp(x[i], x[i], x[i+1], x[i+2], t)
+            elif i == n - 2:
+                ibtwn = catmullRom_interp(x[i-1], x[i], x[i+1], x[i+1], t)
+            else:
+                ibtwn = catmullRom_interp(x[i-1], x[i], x[i+1], x[i+2], t)
+            y[f] = ibtwn
+            
     return y
 
 def linear_interp(x0, x1, t):
     return (1.0 - t) * x0 + t * x1
 
-def linear(x, ibf=1, ease=iden):
+def linear(x, ibf=1, ease=iden, p=[(1,1)]):
     '''
     linearly interpolate between frames
     x : encoded tensor (n, encode_dim)
@@ -101,7 +136,24 @@ def linear(x, ibf=1, ease=iden):
         y[idx] = x[i]
         idx += 1
         for f in range(1,ibf+1):
-            t = ease(f / (ibf + 2.0))
+            t = (f / (ibf + 2.0))
+
+            lastA = 0
+            lastB = 0
+            currA = 0
+            currB = 0
+            for a, b in p:
+                currA = a
+                currB = b
+                if lastA <= t and t <= currA:
+                    break
+                lastA = currA
+                lastB = currB
+
+            t = (t - lastA) / (currA - lastA)
+            t = ease(t)
+            t = lastB * (1 - t) + currB * t
+
             ibtwn = linear_interp(x[i], x[i+1], t)
             y[idx] = ibtwn
             idx += 1
