@@ -3,25 +3,25 @@
 
 ## Setup
 
-Download the .npy filess from the [QuickDraw](https://github.com/googlecreativelab/quickdraw-dataset) dataset and place them in a data dir
+Download a subset of the [data](https://drive.google.com/file/d/1kfZsjTI27OfSGDJF89R9o_3WErdboXnM/view?usp=sharing) and place them in data
 
-Download the [checkpoints](https://drive.google.com/drive/folders/11fBNOeUny9wDw0SHeLEGWjiV7yPZFPQP?usp=sharing) and place them in checkpoints/checkpoints/
+Download the [checkpoints](https://drive.google.com/drive/folders/11fBNOeUny9wDw0SHeLEGWjiV7yPZFPQP?usp=sharing) and place them in checkpoints
 
 ## Testing
 
-Place any images of class 'classname' in data/png/test/classname. For example, interpolating two images of broccoli should be placed in data/png/test/broccoli. Images should be 256 x 256 and grayscale.
+Place any images of class 'classname' in 'data/png/classname'. For example, interpolating two images of broccoli should be placed in 'data/png/broccoli'. Images should be 256 x 256 and grayscale.
 
 Make sure to set the batch size equal to the number of images. For example, if interpolating between 5 images, run:
 
 ```
-python3 test.py --batch-size 2 --img-class broccoli
+python3 test.py --batch-size 5 --img-class broccoli
 ```
 
-When running interpolation, outputs will be saved to 'results/test/'.
+When running interpolation, outputs will be saved to 'results/test'.
 
 ## Changing Interpolation
 
-On lines 92-93 in test.py
+On lines 92-93 in 'test.py'
 
 ```                
 y = linear(encoded, ibf=20, ease=sigmoid)

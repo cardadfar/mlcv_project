@@ -52,14 +52,14 @@ if __name__ == '__main__':
     args = parser.parse_args()
     args.cuda = not args.no_cuda and torch.cuda.is_available()
     device = torch.device("cuda" if args.cuda else "cpu")
-    torch.manual_seed(args.seed)
+    # torch.manual_seed(args.seed)
 
     print(args)
 
     MODEL_TYPE = args.img_class
 
     def load_model(model, loss_fn, opt, epoch):
-        checkpoint = torch.load("checkpoints/checkpoints/" + MODEL_TYPE + "/model_epoch_5.zip", map_location=device)
+        checkpoint = torch.load("checkpoints/" + MODEL_TYPE + "/model_epoch_5", map_location=device)
         model.load_state_dict(checkpoint['model_state_dict'])
         opt.load_state_dict(checkpoint['optimizer_state_dict'])
         epoch = checkpoint['epoch']
@@ -70,7 +70,7 @@ if __name__ == '__main__':
         return model, loss_fn, opt, epoch
 
     def save_img(data, name, test=True):
-        data = torch.sigmoid(8 * (data - 0.5))
+        # data = torch.sigmoid(8 * (data - 0.5))
         true_data = data[0].detach().cpu().numpy() * 255
         true = im.fromarray(np.uint8(true_data))
         if test:
@@ -93,23 +93,20 @@ if __name__ == '__main__':
                 #y = catmullRom(encoded, ibf=20, ease=sigmoid)
                 y = y.to(device)
 
-
                 output = model.decode(y)
-
-                output = torch.where(output > 0.5, 1.0, torch.where(output > 0.3, 0.5, 0.0).double())
+                output = torch.sigmoid(8 * (output - 0.5))
+                output[output > 0.6] = 1.0
+                output[output < 0.3] = 0.0
+                # output = torch.where(output > 0.5, 1.0, torch.where(output > 0.3, 0.5, 0.0).double())
                 
                 for i in range(len(output)):
                     save_img(output[i], str(i) + '.png')
                 
-                
-                
-
 
     os.makedirs(args.checkpoint_path, exist_ok=True)
-    os.makedirs(args.results_path + 'train/', exist_ok=True)
     os.makedirs(args.results_path + 'test/', exist_ok=True)
 
-    test_dataset = TestDataset('data/png/test/' + MODEL_TYPE)
+    test_dataset = TestDataset('data/png/' + MODEL_TYPE)
 
     model = Network(args, input_size=(1, 256, 256))
     model.to(device) 
@@ -124,7 +121,7 @@ if __name__ == '__main__':
     test_loader = torch.utils.data.DataLoader(
         test_dataset,
         batch_size=args.batch_size,
-        shuffle=False,
+        shuffle=True,
         num_workers=args.workers,
         pin_memory=True,
         sampler=None,
